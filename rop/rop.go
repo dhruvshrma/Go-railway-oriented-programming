@@ -9,30 +9,6 @@ type Result[T any] struct {
 func Ok[T any](v T) Result[T]         { return Result[T]{value: v} }
 func Fail[T any](err error) Result[T] { var zero T; return Result[T]{zero, err} }
 
-// func (r Result[T]) Bind[U any](f func(T) (U, error)) Result[U] {
-//     if r.err != nil {
-//         return Fail[U](r.err)
-//     }
-//     u, err := f(r.value)
-//     if err != nil {
-//         return Fail[U](err)
-//     }
-//     return Ok(u)
-// }
-
-// func (r Result[T]) Then[U any](f func(T) (U, error)) func() Result[U] {
-//     return func() Result[U] {
-//         if r.err != nil {
-//             return Fail[U](r.err)
-//         }
-//         u, err := f(r.value)
-//         if err != nil {
-//             return Fail[U](err)
-//         }
-//         return Ok(u)
-//     }
-// }
-
 func Bind[T any, U any](r Result[T], f func(T) (U, error)) Result[U] {
 	if r.err != nil {
 		return Fail[U](r.err)
@@ -42,6 +18,17 @@ func Bind[T any, U any](r Result[T], f func(T) (U, error)) Result[U] {
 		return Fail[U](err)
 	}
 	return Ok(u)
+}
+
+func Map[T any, U any](r Result[T], f func(T) U) Result[U] {
+	if r.err != nil {
+		return Fail[U](r.err)
+	}
+	return Ok(f(r.value))
+}
+
+func Pipe[T any, U any](r Result[T], f func(T) (U, error)) Result[U] {
+	return Bind(r, f)
 }
 
 func (r Result[T]) Unwrap() (T, error) { return r.value, r.err }
