@@ -1,6 +1,8 @@
 // result.go
 package rop
 
+import "fmt"
+
 type Result[T any] struct {
 	value T
 	err   error
@@ -44,9 +46,49 @@ func (r Result[T]) OnError(f func(error)) Result[T] {
 	}
 	return r
 }
+
+func OrElse[T any](r Result[T], f func(error) Result[T]) Result[T] {
+	if r.err != nil {
+		return f(r.err)
+	}
+	return r
+}
+
+func TeeE[T any](r Result[T], f func(T) error) Result[T] {
+	if r.err != nil {
+		return r
+	}
+	if err := f(r.value); err != nil {
+		return Fail[T](err)
+	}
+	return r
+}
+
+func Tee[T any](r Result[T], f func(T)) Result[T] {
+	if r.err == nil {
+		f(r.value)
+	}
+	return r
+}
 func (r Result[T]) OnSuccess(f func(T)) Result[T] {
 	if r.err == nil {
 		f(r.value)
 	}
 	return r
+}
+
+func Try[T any](f func() (T, error)) (res Result[T]) {
+	defer func() {
+		if r := recover(); r != nil {
+			// It's important to assign to the named return variable 'res' here.
+			// Otherwise, the Fail result would not be returned.
+			res = Fail[T](fmt.Errorf("panic: %v", r))
+		}
+	}()
+
+	val, err := f()
+	if err != nil {
+		return Fail[T](err)
+	}
+	return Ok(val)
 }
